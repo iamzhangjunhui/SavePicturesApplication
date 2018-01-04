@@ -1,8 +1,10 @@
 package com.example.kaylee.savepicturesapplication;
 
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
+import android.net.Uri;
 import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -34,12 +36,12 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        imageView= (ImageView) findViewById(R.id.image);
+        imageView = (ImageView) findViewById(R.id.image);
         Observable.create(new Observable.OnSubscribe<Bitmap>() {
             @Override
             public void call(Subscriber<? super Bitmap> subscriber) {
                 try {
-                    Bitmap bitmap=getBitmapFromUrl();
+                    Bitmap bitmap = getBitmapFromUrl();
                     subscriber.onNext(bitmap);
                 } catch (MalformedURLException e) {
                     e.printStackTrace();
@@ -96,23 +98,31 @@ public class MainActivity extends AppCompatActivity {
             //创建文件夹
             foder.mkdirs();
         }
-        File file = new File(SAVE_REAL_PATH,"p.png");
-        if (!file.exists()) {
-            try {
-                file.createNewFile();
-                BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(file));
-                bitmap.compress(Bitmap.CompressFormat.PNG, 80, outputStream);
-                outputStream.flush();
-                outputStream.close();
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        Toast.makeText(MainActivity.this, "图片保存成功", Toast.LENGTH_SHORT).show();
-                    }
-                });
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+        File file = new File(SAVE_REAL_PATH, System.currentTimeMillis() + ".png");
+        if (file.exists()) {
+            file.delete();
+        }
+        try {
+            file.createNewFile();
+            BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(file));
+            bitmap.compress(Bitmap.CompressFormat.PNG, 80, outputStream);
+            outputStream.flush();
+            outputStream.close();
+            //发广播告诉相册有图片需要更新，这样可以在图册下看到保存的图片了
+            Intent intent=new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+            Uri uri=Uri.fromFile(file);
+            intent.setData(uri);
+            sendBroadcast(intent);
+
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(MainActivity.this, "图片保存成功", Toast.LENGTH_SHORT).show();
+                }
+            });
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
+
 }
